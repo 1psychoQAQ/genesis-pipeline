@@ -112,39 +112,21 @@ func printFilterResults(results []filter.FilterResult, passed []model.Paper, ski
 			fmt.Printf("    📥 PDF:      https://arxiv.org/pdf/%s.pdf\n", p.ID)
 		}
 	} else {
-		// Show all papers with filter results
+		// Only show papers that passed the filter
 		fmt.Printf("  📚 Filter Results: %d/%d papers passed\n", len(passed), len(results))
 		fmt.Println("════════════════════════════════════════════════════════════════")
 
-		passedMap := make(map[string]model.Paper)
-		for _, p := range passed {
-			passedMap[p.ID] = p
-		}
-
-		for i, r := range results {
-			status := "❌ REJECTED"
-			if r.PassedLevel1 {
-				if _, ok := passedMap[r.Paper.ID]; ok {
-					status = "✅ PASSED"
-				} else {
-					status = "⚠️  LOW SCORE"
-				}
+		for i, p := range passed {
+			fmt.Printf("\n[%d] ✅ %s\n", i+1, p.Title)
+			fmt.Printf("    Score: %d/100\n", p.Score)
+			if len(p.ScoreDetails) > 0 {
+				fmt.Printf("    Details: %s\n", strings.Join(p.ScoreDetails, ", "))
 			}
-
-			fmt.Printf("\n[%d] %s %s\n", i+1, status, r.Paper.Title)
-			fmt.Printf("    Score: %d/100 | Level1: %v\n", r.Score, r.PassedLevel1)
-			if len(r.Details) > 0 {
-				fmt.Printf("    Details: %s\n", strings.Join(r.Details, ", "))
-			}
-			fmt.Printf("    📄 https://arxiv.org/abs/%s\n", r.Paper.ID)
+			fmt.Printf("    📄 Abstract: https://arxiv.org/abs/%s\n", p.ID)
+			fmt.Printf("    📥 PDF:      https://arxiv.org/pdf/%s.pdf\n", p.ID)
 		}
-
-		// Summary
-		fmt.Println("")
-		fmt.Println("────────────────────────────────────────────────────────────────")
-		fmt.Printf("  Summary: %d passed, %d rejected\n", len(passed), len(results)-len(passed))
 	}
 
-	fmt.Println("════════════════════════════════════════════════════════════════")
 	fmt.Println("")
+	fmt.Println("════════════════════════════════════════════════════════════════")
 }
