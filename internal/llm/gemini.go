@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/1psychoQAQ/genesis-pipeline/internal/config"
 )
 
-const (
-	geminiAPIBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
-	defaultModel     = "gemini-2.0-flash"
-)
+const geminiAPIBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 // GeminiClient handles Gemini API calls and implements KeywordExtractor.
 type GeminiClient struct {
@@ -22,24 +20,15 @@ type GeminiClient struct {
 	httpClient *http.Client
 }
 
-// NewGeminiClient creates a new Gemini client.
-// Configuration from environment variables:
-//   - GEMINI_API_KEY: API key (required)
-//   - GEMINI_MODEL: Model name (optional, default: gemini-2.0-flash)
-func NewGeminiClient() (*GeminiClient, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("GEMINI_API_KEY environment variable not set")
-	}
-
-	model := os.Getenv("GEMINI_MODEL")
-	if model == "" {
-		model = defaultModel
+// NewGeminiClient creates a new Gemini client from config.
+func NewGeminiClient(cfg config.GeminiConfig) (*GeminiClient, error) {
+	if cfg.APIKey == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY not configured")
 	}
 
 	return &GeminiClient{
-		apiKey: apiKey,
-		model:  model,
+		apiKey: cfg.APIKey,
+		model:  cfg.Model,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},

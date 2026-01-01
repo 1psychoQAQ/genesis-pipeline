@@ -5,13 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/joho/godotenv"
-
+	"github.com/1psychoQAQ/genesis-pipeline/internal/config"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/filter"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/llm"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/model"
@@ -20,21 +17,18 @@ import (
 )
 
 func main() {
-	// Load .env file (optional, won't fail if not exists)
-	_ = godotenv.Load()
+	// Load configuration from .env and environment
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
-	// Get defaults from environment
-	defaultLimit := getEnvInt("DEFAULT_LIMIT", 10)
-	defaultMinScore := getEnvInt("DEFAULT_MIN_SCORE", 60)
-	defaultMaxAge := getEnvInt("DEFAULT_MAX_AGE", 365)
-	defaultQuery := getEnvStr("DEFAULT_QUERY", "machine learning")
-
-	// Command-line flags
+	// Command-line flags (override config defaults)
 	question := flag.String("question", "", "Natural language question (uses AI to extract keywords)")
 	query := flag.String("query", "", "Direct search query for ArXiv")
-	limit := flag.Int("limit", defaultLimit, "Number of papers to fetch")
-	minScore := flag.Int("min-score", defaultMinScore, "Minimum score threshold (0-100)")
-	maxAgeDays := flag.Int("max-age", defaultMaxAge, "Maximum paper age in days (0 = no limit)")
+	limit := flag.Int("limit", cfg.Pipeline.DefaultLimit, "Number of papers to fetch")
+	minScore := flag.Int("min-score", cfg.Pipeline.DefaultMinScore, "Minimum score threshold (0-100)")
+	maxAgeDays := flag.Int("max-age", cfg.Pipeline.DefaultMaxAge, "Maximum paper age in days (0 = no limit)")
 	skipDB := flag.Bool("skip-db", false, "Skip database operations")
 	skipFilter := flag.Bool("skip-filter", false, "Skip quality filtering")
 	flag.Parse()
@@ -45,10 +39,14 @@ func main() {
 	searchQuery := *query
 	if *question != "" {
 		// Use LLM to extract keywords from question
+		if !cfg.Gemini.IsConfigured() {
+			log.Fatalf("GEMINI_API_KEY not configured. Please set it in .env file")
+		}
+
 		log.Printf("Processing question: %q", *question)
-		extractor, err := llm.NewKeywordExtractor("gemini")
+		extractor, err := llm.NewKeywordExtractor("gemini", cfg.Gemini)
 		if err != nil {
-			log.Fatalf("Failed to create keyword extractor: %v\nPlease set GEMINI_API_KEY in .env file", err)
+			log.Fatalf("Failed to create keyword extractor: %v", err)
 		}
 
 		keywords, err := extractor.ExtractKeywords(*question)
@@ -58,7 +56,7 @@ func main() {
 		searchQuery = keywords
 		log.Printf("AI extracted keywords: %q", searchQuery)
 	} else if searchQuery == "" {
-		searchQuery = defaultQuery
+		searchQuery = cfg.Pipeline.DefaultQuery
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -108,8 +106,7 @@ func main() {
 	}
 
 	// Connect to database
-	cfg := storage.DefaultConfig()
-	pool, err := storage.NewPool(ctx, cfg)
+	pool, err := storage.NewPool(ctx, cfg.DB)
 	if err != nil {
 		log.Printf("Database connection failed: %v", err)
 		log.Println("Run with -skip-db flag to skip database operations")
@@ -178,20 +175,4 @@ func printFilterResults(results []filter.FilterResult, passed []model.Paper, ski
 
 	fmt.Println("")
 	fmt.Println("════════════════════════════════════════════════════════════════")
-}
-
-func getEnvStr(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
-}
-
-func getEnvInt(key string, defaultVal int) int {
-	if val := os.Getenv(key); val != "" {
-		if parsed, err := strconv.Atoi(val); err == nil {
-			return parsed
-		}
-	}
-	return defaultVal
 }

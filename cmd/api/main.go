@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/1psychoQAQ/genesis-pipeline/internal/api"
+	"github.com/1psychoQAQ/genesis-pipeline/internal/config"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/parser/arxiv"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/storage"
 )
@@ -21,11 +22,15 @@ func main() {
 
 	log.Println("Genesis API Server starting...")
 
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
 	// Connect to database
 	ctx := context.Background()
-	cfg := storage.DefaultConfig()
-
-	pool, err := storage.NewPool(ctx, cfg)
+	pool, err := storage.NewPool(ctx, cfg.DB)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
