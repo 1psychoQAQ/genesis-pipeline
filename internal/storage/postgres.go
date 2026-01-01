@@ -3,9 +3,11 @@ package storage
 import (
 	"context"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	"os"
+	"strconv"
 )
+
+import "github.com/jackc/pgx/v5/pgxpool"
 
 // Config holds database connection configuration.
 type Config struct {
@@ -16,15 +18,29 @@ type Config struct {
 	Database string
 }
 
-// DefaultConfig returns the default configuration for local development.
+// DefaultConfig returns configuration from environment variables or defaults.
 func DefaultConfig() Config {
-	return Config{
-		Host:     "localhost",
-		Port:     5433,
-		User:     "genesis",
-		Password: "genesis_secret",
-		Database: "genesis_db",
+	port := 5433
+	if p := os.Getenv("DB_PORT"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil {
+			port = parsed
+		}
 	}
+
+	return Config{
+		Host:     getEnvOrDefault("DB_HOST", "localhost"),
+		Port:     port,
+		User:     getEnvOrDefault("DB_USER", "genesis"),
+		Password: getEnvOrDefault("DB_PASSWORD", "genesis123"),
+		Database: getEnvOrDefault("DB_NAME", "genesis"),
+	}
+}
+
+func getEnvOrDefault(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }
 
 // ConnString returns the PostgreSQL connection string.

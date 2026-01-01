@@ -5,67 +5,61 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"sort"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/1psychoQAQ/genesis-pipeline/internal/filter"
+	"github.com/1psychoQAQ/genesis-pipeline/internal/llm"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/model"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/parser/arxiv"
-	"github.com/1psychoQAQ/genesis-pipeline/internal/preset"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/storage"
 )
 
 func main() {
+	// Load .env file (optional, won't fail if not exists)
+	_ = godotenv.Load()
+
+	// Get defaults from environment
+	defaultLimit := getEnvInt("DEFAULT_LIMIT", 10)
+	defaultMinScore := getEnvInt("DEFAULT_MIN_SCORE", 60)
+	defaultMaxAge := getEnvInt("DEFAULT_MAX_AGE", 365)
+	defaultQuery := getEnvStr("DEFAULT_QUERY", "machine learning")
+
 	// Command-line flags
-	query := flag.String("query", "", "Search query for ArXiv")
-	presetName := flag.String("preset", "", "Use a search preset (use -list-presets to see options)")
-	listPresets := flag.Bool("list-presets", false, "List all available search presets")
-	limit := flag.Int("limit", 50, "Number of papers to fetch")
-	minScore := flag.Int("min-score", 0, "Minimum score threshold (0-100, 0 = use preset default)")
-	maxAgeDays := flag.Int("max-age", 0, "Maximum paper age in days (0 = use preset default)")
+	question := flag.String("question", "", "Natural language question (uses AI to extract keywords)")
+	query := flag.String("query", "", "Direct search query for ArXiv")
+	limit := flag.Int("limit", defaultLimit, "Number of papers to fetch")
+	minScore := flag.Int("min-score", defaultMinScore, "Minimum score threshold (0-100)")
+	maxAgeDays := flag.Int("max-age", defaultMaxAge, "Maximum paper age in days (0 = no limit)")
 	skipDB := flag.Bool("skip-db", false, "Skip database operations")
 	skipFilter := flag.Bool("skip-filter", false, "Skip quality filtering")
 	flag.Parse()
 
-	// List presets and exit
-	if *listPresets {
-		printPresets()
-		return
-	}
-
-	// Determine search parameters
-	searchQuery := *query
-	effectiveMinScore := *minScore
-	effectiveMaxAge := *maxAgeDays
-
-	if *presetName != "" {
-		p, ok := preset.Get(*presetName)
-		if !ok {
-			log.Fatalf("Unknown preset: %q. Use -list-presets to see available options.", *presetName)
-		}
-		searchQuery = p.Query
-		if effectiveMinScore == 0 {
-			effectiveMinScore = p.MinScore
-		}
-		if effectiveMaxAge == 0 {
-			effectiveMaxAge = p.MaxAgeDays
-		}
-		log.Printf("Using preset: %s (%s)", p.Name, p.Description)
-	}
-
-	// Default values if not using preset
-	if searchQuery == "" {
-		searchQuery = "machine learning"
-	}
-	if effectiveMinScore == 0 {
-		effectiveMinScore = 60
-	}
-	if effectiveMaxAge == 0 {
-		effectiveMaxAge = 365
-	}
-
 	log.Println("Genesis Research Pipeline starting...")
+
+	// Determine search query
+	searchQuery := *query
+	if *question != "" {
+		// Use LLM to extract keywords from question
+		log.Printf("Processing question: %q", *question)
+		extractor, err := llm.NewKeywordExtractor("gemini")
+		if err != nil {
+			log.Fatalf("Failed to create keyword extractor: %v\nPlease set GEMINI_API_KEY in .env file", err)
+		}
+
+		keywords, err := extractor.ExtractKeywords(*question)
+		if err != nil {
+			log.Fatalf("Failed to extract keywords: %v", err)
+		}
+		searchQuery = keywords
+		log.Printf("AI extracted keywords: %q", searchQuery)
+	} else if searchQuery == "" {
+		searchQuery = defaultQuery
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -81,15 +75,15 @@ func main() {
 	log.Printf("Fetched %d papers from ArXiv", len(papers))
 
 	// Apply time filter (recency)
-	if effectiveMaxAge > 0 {
-		cutoff := time.Now().AddDate(0, 0, -effectiveMaxAge)
+	if *maxAgeDays > 0 {
+		cutoff := time.Now().AddDate(0, 0, -*maxAgeDays)
 		var recentPapers []model.Paper
 		for _, p := range papers {
 			if p.UpdatedAt.After(cutoff) {
 				recentPapers = append(recentPapers, p)
 			}
 		}
-		log.Printf("Time filter: %d/%d papers within %d days", len(recentPapers), len(papers), effectiveMaxAge)
+		log.Printf("Time filter: %d/%d papers within %d days", len(recentPapers), len(papers), *maxAgeDays)
 		papers = recentPapers
 	}
 
@@ -101,10 +95,10 @@ func main() {
 		log.Println("Skipping quality filter (--skip-filter)")
 	} else {
 		f := filter.NewFilter()
-		f.MinScore = effectiveMinScore
+		f.MinScore = *minScore
 		filterResults = f.Apply(papers)
 		filteredPapers = f.FilterPassed(papers)
-		log.Printf("Quality filter: %d/%d papers passed (min score: %d)", len(filteredPapers), len(papers), effectiveMinScore)
+		log.Printf("Quality filter: %d/%d papers passed (min score: %d)", len(filteredPapers), len(papers), *minScore)
 	}
 
 	// Skip database if requested
@@ -186,52 +180,18 @@ func printFilterResults(results []filter.FilterResult, passed []model.Paper, ski
 	fmt.Println("════════════════════════════════════════════════════════════════")
 }
 
-func printPresets() {
-	fmt.Println("")
-	fmt.Println("════════════════════════════════════════════════════════════════")
-	fmt.Println("  Available Search Presets")
-	fmt.Println("════════════════════════════════════════════════════════════════")
-
-	// Group presets by category
-	categories := map[string][]string{
-		"LLM & NLP":         {"llm-reasoning", "llm-agent", "llm-eval", "rag", "prompt"},
-		"Computer Vision":   {"diffusion", "multimodal", "video"},
-		"Machine Learning":  {"transformer", "finetune", "distill", "rl"},
-		"Safety & Alignment": {"alignment", "jailbreak", "hallucination"},
-		"Data & Training":   {"data-synthesis", "scaling"},
+func getEnvStr(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
 	}
+	return defaultVal
+}
 
-	categoryOrder := []string{"LLM & NLP", "Computer Vision", "Machine Learning", "Safety & Alignment", "Data & Training"}
-
-	for _, cat := range categoryOrder {
-		names := categories[cat]
-		fmt.Printf("\n  [%s]\n", cat)
-		for _, name := range names {
-			p, _ := preset.Get(name)
-			fmt.Printf("    %-18s %s\n", p.Name, p.Description)
+func getEnvInt(key string, defaultVal int) int {
+	if val := os.Getenv(key); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			return parsed
 		}
 	}
-
-	fmt.Println("")
-	fmt.Println("────────────────────────────────────────────────────────────────")
-	fmt.Println("  Usage: go run cmd/pipeline/main.go -preset <name> [-limit N]")
-	fmt.Println("  Example: go run cmd/pipeline/main.go -preset llm-reasoning")
-	fmt.Println("════════════════════════════════════════════════════════════════")
-	fmt.Println("")
-
-	// Also print all presets sorted for reference
-	fmt.Println("All presets with details:")
-	fmt.Println("")
-
-	presetList := preset.List()
-	sort.Slice(presetList, func(i, j int) bool {
-		return presetList[i].Name < presetList[j].Name
-	})
-
-	for _, p := range presetList {
-		fmt.Printf("  %s:\n", p.Name)
-		fmt.Printf("    Query: %s\n", p.Query)
-		fmt.Printf("    MinScore: %d, MaxAge: %d days\n", p.MinScore, p.MaxAgeDays)
-		fmt.Println("")
-	}
+	return defaultVal
 }

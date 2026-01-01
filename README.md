@@ -32,6 +32,7 @@ A data pipeline for collecting and storing scientific papers from ArXiv, built w
 
 ### Features
 
+- **AI-Powered Search**: Use natural language questions to search (powered by Gemini)
 - **Data Ingestion**: Fetch papers from ArXiv API with configurable queries
 - **Quality Filtering**: Two-level filtering system for high-quality papers
   - Level 1: Hard gate (acceptance signals, DOI, strong evidence)
@@ -67,35 +68,23 @@ go run cmd/benchmark/main.go -limit 100
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-preset` | - | Use a search preset (see `-list-presets`) |
-| `-query` | "machine learning" | Search query for ArXiv |
-| `-limit` | 50 | Number of papers to fetch |
+| `-question` | "" | Natural language question (uses Gemini AI) |
+| `-query` | "" | Direct search query for ArXiv |
+| `-limit` | 10 | Number of papers to fetch |
 | `-min-score` | 60 | Minimum quality score (0-100) |
 | `-max-age` | 365 | Maximum paper age in days (0 = no limit) |
 | `-skip-db` | false | Skip database operations |
 | `-skip-filter` | false | Skip quality filtering |
-| `-list-presets` | false | List all available search presets |
 
-### Search Presets
-
-Use presets for common research topics:
+### AI-Powered Search
 
 ```bash
-# List all presets
-go run cmd/pipeline/main.go -list-presets
+# Set Gemini API key (get free key from https://aistudio.google.com/apikey)
+export GEMINI_API_KEY="your-api-key"
 
-# Use a preset
-go run cmd/pipeline/main.go -preset llm-reasoning
-go run cmd/pipeline/main.go -preset rag
-go run cmd/pipeline/main.go -preset diffusion
+# Search with natural language question
+go run cmd/pipeline/main.go -question "How to improve reasoning in LLMs" -limit 50 -max-age 180
 ```
-
-Available preset categories:
-- **LLM & NLP**: `llm-reasoning`, `llm-agent`, `llm-eval`, `rag`, `prompt`
-- **Computer Vision**: `diffusion`, `multimodal`, `video`
-- **Machine Learning**: `transformer`, `finetune`, `distill`, `rl`
-- **Safety & Alignment**: `alignment`, `jailbreak`, `hallucination`
-- **Data & Training**: `data-synthesis`, `scaling`
 
 ### API Endpoints
 
@@ -119,8 +108,8 @@ genesis-pipeline/
 ├── internal/
 │   ├── model/          # Data models
 │   ├── parser/         # ArXiv API client
+│   ├── llm/            # Gemini AI client
 │   ├── filter/         # Quality filtering & scoring
-│   ├── preset/         # Search presets
 │   ├── storage/        # PostgreSQL repository
 │   ├── validation/     # Data quality checks
 │   ├── benchmark/      # Benchmark utilities
@@ -165,6 +154,7 @@ genesis-pipeline/
 
 ### 功能特性
 
+- **AI 智能搜索**: 用自然语言提问搜索论文（Gemini 驱动）
 - **数据采集**: 从 ArXiv API 获取论文，支持自定义查询条件
 - **质量过滤**: 双层过滤系统，确保高质量论文
   - Level 1: 硬过滤（接收信号、DOI、强实证）
@@ -200,35 +190,23 @@ go run cmd/benchmark/main.go -limit 100
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `-preset` | - | 使用搜索预设（见 `-list-presets`） |
-| `-query` | "machine learning" | ArXiv 搜索查询词 |
-| `-limit` | 50 | 获取论文数量 |
+| `-question` | "" | 自然语言问题（使用 Gemini AI） |
+| `-query` | "" | ArXiv 搜索查询词 |
+| `-limit` | 10 | 获取论文数量 |
 | `-min-score` | 60 | 最低质量分数 (0-100) |
 | `-max-age` | 365 | 最大论文天数 (0 = 不限制) |
 | `-skip-db` | false | 跳过数据库操作 |
 | `-skip-filter` | false | 跳过质量过滤 |
-| `-list-presets` | false | 列出所有搜索预设 |
 
-### 搜索预设
-
-使用预设快速搜索常见研究主题：
+### AI 智能搜索
 
 ```bash
-# 列出所有预设
-go run cmd/pipeline/main.go -list-presets
+# 设置 Gemini API Key（从 https://aistudio.google.com/apikey 免费获取）
+export GEMINI_API_KEY="your-api-key"
 
-# 使用预设
-go run cmd/pipeline/main.go -preset llm-reasoning
-go run cmd/pipeline/main.go -preset rag
-go run cmd/pipeline/main.go -preset diffusion
+# 用自然语言问题搜索
+go run cmd/pipeline/main.go -question "如何提升大语言模型的推理能力" -limit 50 -max-age 180
 ```
-
-可用预设分类：
-- **LLM & NLP**: `llm-reasoning`, `llm-agent`, `llm-eval`, `rag`, `prompt`
-- **计算机视觉**: `diffusion`, `multimodal`, `video`
-- **机器学习**: `transformer`, `finetune`, `distill`, `rl`
-- **安全与对齐**: `alignment`, `jailbreak`, `hallucination`
-- **数据与训练**: `data-synthesis`, `scaling`
 
 ### API 接口
 
@@ -253,7 +231,6 @@ genesis-pipeline/
 │   ├── model/          # 数据模型
 │   ├── parser/         # ArXiv API 客户端
 │   ├── filter/         # 质量过滤与打分
-│   ├── preset/         # 搜索预设
 │   ├── storage/        # PostgreSQL 存储层
 │   ├── validation/     # 数据质量验证
 │   ├── benchmark/      # 基准测试工具
