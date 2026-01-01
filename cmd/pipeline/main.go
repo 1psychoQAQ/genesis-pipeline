@@ -76,12 +76,17 @@ func main() {
 }
 
 func printPapers(papers []model.Paper) {
-	fmt.Printf("\nFetched Papers:\n")
-	fmt.Println("─────────────────────────────────────────")
+	fmt.Println("")
+	fmt.Println("════════════════════════════════════════════════════════════════")
+	fmt.Printf("  📚 Fetched %d papers:\n", len(papers))
+	fmt.Println("════════════════════════════════════════════════════════════════")
 	for i, p := range papers {
-		fmt.Printf("[%d] %s\n", i+1, p.Title)
-		fmt.Printf("    ID: %s\n", p.ID)
+		fmt.Printf("\n[%d] %s\n", i+1, p.Title)
 		fmt.Printf("    Authors: %v\n", p.Authors)
-		fmt.Printf("    Categories: %v\n\n", p.Categories)
+		fmt.Printf("    Categories: %v\n", p.Categories)
+		fmt.Printf("    📄 Abstract: https://arxiv.org/abs/%s\n", p.ID)
+		fmt.Printf("    📥 PDF:      https://arxiv.org/pdf/%s.pdf\n", p.ID)
 	}
+	fmt.Println("")
+	fmt.Println("════════════════════════════════════════════════════════════════")
 }
