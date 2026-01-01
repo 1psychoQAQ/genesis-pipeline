@@ -19,6 +19,7 @@ func main() {
 	query := flag.String("query", "machine learning", "Search query for ArXiv")
 	limit := flag.Int("limit", 10, "Number of papers to fetch")
 	minScore := flag.Int("min-score", 60, "Minimum score threshold (0-100)")
+	maxAgeDays := flag.Int("max-age", 365, "Maximum paper age in days (0 = no limit)")
 	skipDB := flag.Bool("skip-db", false, "Skip database operations")
 	skipFilter := flag.Bool("skip-filter", false, "Skip quality filtering")
 	flag.Parse()
@@ -37,6 +38,19 @@ func main() {
 		log.Fatalf("Failed to fetch papers: %v", err)
 	}
 	log.Printf("Fetched %d papers from ArXiv", len(papers))
+
+	// Apply time filter (recency)
+	if *maxAgeDays > 0 {
+		cutoff := time.Now().AddDate(0, 0, -*maxAgeDays)
+		var recentPapers []model.Paper
+		for _, p := range papers {
+			if p.UpdatedAt.After(cutoff) {
+				recentPapers = append(recentPapers, p)
+			}
+		}
+		log.Printf("Time filter: %d/%d papers within %d days", len(recentPapers), len(papers), *maxAgeDays)
+		papers = recentPapers
+	}
 
 	// Apply quality filtering
 	var filteredPapers []model.Paper
@@ -118,7 +132,7 @@ func printFilterResults(results []filter.FilterResult, passed []model.Paper, ski
 
 		for i, p := range passed {
 			fmt.Printf("\n[%d] ✅ %s\n", i+1, p.Title)
-			fmt.Printf("    Score: %d/100\n", p.Score)
+			fmt.Printf("    Score: %d/100 | Updated: %s\n", p.Score, p.UpdatedAt.Format("2006-01-02"))
 			if len(p.ScoreDetails) > 0 {
 				fmt.Printf("    Details: %s\n", strings.Join(p.ScoreDetails, ", "))
 			}
