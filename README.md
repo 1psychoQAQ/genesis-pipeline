@@ -67,12 +67,35 @@ go run cmd/benchmark/main.go -limit 100
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `-preset` | - | Use a search preset (see `-list-presets`) |
 | `-query` | "machine learning" | Search query for ArXiv |
-| `-limit` | 10 | Number of papers to fetch |
+| `-limit` | 50 | Number of papers to fetch |
 | `-min-score` | 60 | Minimum quality score (0-100) |
 | `-max-age` | 365 | Maximum paper age in days (0 = no limit) |
 | `-skip-db` | false | Skip database operations |
 | `-skip-filter` | false | Skip quality filtering |
+| `-list-presets` | false | List all available search presets |
+
+### Search Presets
+
+Use presets for common research topics:
+
+```bash
+# List all presets
+go run cmd/pipeline/main.go -list-presets
+
+# Use a preset
+go run cmd/pipeline/main.go -preset llm-reasoning
+go run cmd/pipeline/main.go -preset rag
+go run cmd/pipeline/main.go -preset diffusion
+```
+
+Available preset categories:
+- **LLM & NLP**: `llm-reasoning`, `llm-agent`, `llm-eval`, `rag`, `prompt`
+- **Computer Vision**: `diffusion`, `multimodal`, `video`
+- **Machine Learning**: `transformer`, `finetune`, `distill`, `rl`
+- **Safety & Alignment**: `alignment`, `jailbreak`, `hallucination`
+- **Data & Training**: `data-synthesis`, `scaling`
 
 ### API Endpoints
 
@@ -97,6 +120,7 @@ genesis-pipeline/
 │   ├── model/          # Data models
 │   ├── parser/         # ArXiv API client
 │   ├── filter/         # Quality filtering & scoring
+│   ├── preset/         # Search presets
 │   ├── storage/        # PostgreSQL repository
 │   ├── validation/     # Data quality checks
 │   ├── benchmark/      # Benchmark utilities
@@ -176,12 +200,35 @@ go run cmd/benchmark/main.go -limit 100
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
+| `-preset` | - | 使用搜索预设（见 `-list-presets`） |
 | `-query` | "machine learning" | ArXiv 搜索查询词 |
-| `-limit` | 10 | 获取论文数量 |
+| `-limit` | 50 | 获取论文数量 |
 | `-min-score` | 60 | 最低质量分数 (0-100) |
 | `-max-age` | 365 | 最大论文天数 (0 = 不限制) |
 | `-skip-db` | false | 跳过数据库操作 |
 | `-skip-filter` | false | 跳过质量过滤 |
+| `-list-presets` | false | 列出所有搜索预设 |
+
+### 搜索预设
+
+使用预设快速搜索常见研究主题：
+
+```bash
+# 列出所有预设
+go run cmd/pipeline/main.go -list-presets
+
+# 使用预设
+go run cmd/pipeline/main.go -preset llm-reasoning
+go run cmd/pipeline/main.go -preset rag
+go run cmd/pipeline/main.go -preset diffusion
+```
+
+可用预设分类：
+- **LLM & NLP**: `llm-reasoning`, `llm-agent`, `llm-eval`, `rag`, `prompt`
+- **计算机视觉**: `diffusion`, `multimodal`, `video`
+- **机器学习**: `transformer`, `finetune`, `distill`, `rl`
+- **安全与对齐**: `alignment`, `jailbreak`, `hallucination`
+- **数据与训练**: `data-synthesis`, `scaling`
 
 ### API 接口
 
@@ -206,6 +253,7 @@ genesis-pipeline/
 │   ├── model/          # 数据模型
 │   ├── parser/         # ArXiv API 客户端
 │   ├── filter/         # 质量过滤与打分
+│   ├── preset/         # 搜索预设
 │   ├── storage/        # PostgreSQL 存储层
 │   ├── validation/     # 数据质量验证
 │   ├── benchmark/      # 基准测试工具
