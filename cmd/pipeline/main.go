@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
+	"github.com/1psychoQAQ/genesis-pipeline/internal/filter"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/model"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/parser/arxiv"
 	"github.com/1psychoQAQ/genesis-pipeline/internal/storage"
@@ -16,7 +18,9 @@ func main() {
 	// Command-line flags
 	query := flag.String("query", "machine learning", "Search query for ArXiv")
 	limit := flag.Int("limit", 10, "Number of papers to fetch")
+	minScore := flag.Int("min-score", 60, "Minimum score threshold (0-100)")
 	skipDB := flag.Bool("skip-db", false, "Skip database operations")
+	skipFilter := flag.Bool("skip-filter", false, "Skip quality filtering")
 	flag.Parse()
 
 	log.Println("Genesis Research Pipeline starting...")
@@ -34,9 +38,23 @@ func main() {
 	}
 	log.Printf("Fetched %d papers from ArXiv", len(papers))
 
+	// Apply quality filtering
+	var filteredPapers []model.Paper
+	var filterResults []filter.FilterResult
+	if *skipFilter {
+		filteredPapers = papers
+		log.Println("Skipping quality filter (--skip-filter)")
+	} else {
+		f := filter.NewFilter()
+		f.MinScore = *minScore
+		filterResults = f.Apply(papers)
+		filteredPapers = f.FilterPassed(papers)
+		log.Printf("Quality filter: %d/%d papers passed (min score: %d)", len(filteredPapers), len(papers), *minScore)
+	}
+
 	// Skip database if requested
 	if *skipDB {
-		printPapers(papers)
+		printFilterResults(filterResults, filteredPapers, *skipFilter)
 		return
 	}
 
@@ -58,12 +76,16 @@ func main() {
 	}
 	log.Println("Database migrated")
 
-	// Save papers
+	// Save filtered papers
 	repo := storage.NewPaperRepository(pool)
-	if err := repo.SaveBatch(ctx, papers); err != nil {
-		log.Fatalf("Failed to save papers: %v", err)
+	if len(filteredPapers) > 0 {
+		if err := repo.SaveBatch(ctx, filteredPapers); err != nil {
+			log.Fatalf("Failed to save papers: %v", err)
+		}
+		log.Printf("Saved %d filtered papers to database", len(filteredPapers))
+	} else {
+		log.Println("No papers passed the filter, nothing saved")
 	}
-	log.Printf("Saved %d papers to database", len(papers))
 
 	// Show count
 	count, err := repo.Count(ctx)
@@ -72,21 +94,57 @@ func main() {
 	}
 	log.Printf("Total papers in database: %d", count)
 
-	printPapers(papers)
+	printFilterResults(filterResults, filteredPapers, *skipFilter)
 }
 
-func printPapers(papers []model.Paper) {
+func printFilterResults(results []filter.FilterResult, passed []model.Paper, skipFilter bool) {
 	fmt.Println("")
 	fmt.Println("════════════════════════════════════════════════════════════════")
-	fmt.Printf("  📚 Fetched %d papers:\n", len(papers))
-	fmt.Println("════════════════════════════════════════════════════════════════")
-	for i, p := range papers {
-		fmt.Printf("\n[%d] %s\n", i+1, p.Title)
-		fmt.Printf("    Authors: %v\n", p.Authors)
-		fmt.Printf("    Categories: %v\n", p.Categories)
-		fmt.Printf("    📄 Abstract: https://arxiv.org/abs/%s\n", p.ID)
-		fmt.Printf("    📥 PDF:      https://arxiv.org/pdf/%s.pdf\n", p.ID)
+
+	if skipFilter {
+		// No filter applied, just print papers
+		fmt.Printf("  📚 Fetched %d papers (filter skipped):\n", len(passed))
+		fmt.Println("════════════════════════════════════════════════════════════════")
+		for i, p := range passed {
+			fmt.Printf("\n[%d] %s\n", i+1, p.Title)
+			fmt.Printf("    Authors: %v\n", p.Authors)
+			fmt.Printf("    📄 Abstract: https://arxiv.org/abs/%s\n", p.ID)
+			fmt.Printf("    📥 PDF:      https://arxiv.org/pdf/%s.pdf\n", p.ID)
+		}
+	} else {
+		// Show all papers with filter results
+		fmt.Printf("  📚 Filter Results: %d/%d papers passed\n", len(passed), len(results))
+		fmt.Println("════════════════════════════════════════════════════════════════")
+
+		passedMap := make(map[string]model.Paper)
+		for _, p := range passed {
+			passedMap[p.ID] = p
+		}
+
+		for i, r := range results {
+			status := "❌ REJECTED"
+			if r.PassedLevel1 {
+				if _, ok := passedMap[r.Paper.ID]; ok {
+					status = "✅ PASSED"
+				} else {
+					status = "⚠️  LOW SCORE"
+				}
+			}
+
+			fmt.Printf("\n[%d] %s %s\n", i+1, status, r.Paper.Title)
+			fmt.Printf("    Score: %d/100 | Level1: %v\n", r.Score, r.PassedLevel1)
+			if len(r.Details) > 0 {
+				fmt.Printf("    Details: %s\n", strings.Join(r.Details, ", "))
+			}
+			fmt.Printf("    📄 https://arxiv.org/abs/%s\n", r.Paper.ID)
+		}
+
+		// Summary
+		fmt.Println("")
+		fmt.Println("────────────────────────────────────────────────────────────────")
+		fmt.Printf("  Summary: %d passed, %d rejected\n", len(passed), len(results)-len(passed))
 	}
-	fmt.Println("")
+
 	fmt.Println("════════════════════════════════════════════════════════════════")
+	fmt.Println("")
 }

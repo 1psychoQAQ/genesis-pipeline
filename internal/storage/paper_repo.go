@@ -28,14 +28,19 @@ func NewPaperRepository(pool *pgxpool.Pool) *PaperRepository {
 // Save inserts or updates a paper.
 func (r *PaperRepository) Save(ctx context.Context, paper model.Paper) error {
 	query := `
-		INSERT INTO papers (id, title, abstract, authors, categories, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO papers (id, title, abstract, authors, categories, updated_at, comments, doi, journal_ref, score, score_details)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (id) DO UPDATE SET
 			title = EXCLUDED.title,
 			abstract = EXCLUDED.abstract,
 			authors = EXCLUDED.authors,
 			categories = EXCLUDED.categories,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			comments = EXCLUDED.comments,
+			doi = EXCLUDED.doi,
+			journal_ref = EXCLUDED.journal_ref,
+			score = EXCLUDED.score,
+			score_details = EXCLUDED.score_details
 	`
 
 	_, err := r.pool.Exec(ctx, query,
@@ -45,6 +50,11 @@ func (r *PaperRepository) Save(ctx context.Context, paper model.Paper) error {
 		paper.Authors,
 		paper.Categories,
 		paper.UpdatedAt,
+		paper.Comments,
+		paper.DOI,
+		paper.JournalRef,
+		paper.Score,
+		paper.ScoreDetails,
 	)
 	if err != nil {
 		return fmt.Errorf("save paper: %w", err)
@@ -58,14 +68,19 @@ func (r *PaperRepository) SaveBatch(ctx context.Context, papers []model.Paper) e
 	batch := &pgx.Batch{}
 
 	query := `
-		INSERT INTO papers (id, title, abstract, authors, categories, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO papers (id, title, abstract, authors, categories, updated_at, comments, doi, journal_ref, score, score_details)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (id) DO UPDATE SET
 			title = EXCLUDED.title,
 			abstract = EXCLUDED.abstract,
 			authors = EXCLUDED.authors,
 			categories = EXCLUDED.categories,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			comments = EXCLUDED.comments,
+			doi = EXCLUDED.doi,
+			journal_ref = EXCLUDED.journal_ref,
+			score = EXCLUDED.score,
+			score_details = EXCLUDED.score_details
 	`
 
 	for _, paper := range papers {
@@ -76,6 +91,11 @@ func (r *PaperRepository) SaveBatch(ctx context.Context, papers []model.Paper) e
 			paper.Authors,
 			paper.Categories,
 			paper.UpdatedAt,
+			paper.Comments,
+			paper.DOI,
+			paper.JournalRef,
+			paper.Score,
+			paper.ScoreDetails,
 		)
 	}
 

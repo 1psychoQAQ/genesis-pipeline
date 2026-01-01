@@ -15,11 +15,17 @@ CREATE TABLE IF NOT EXISTS papers (
     authors TEXT[] NOT NULL DEFAULT '{}',
     categories TEXT[] NOT NULL DEFAULT '{}',
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    comments TEXT DEFAULT '',
+    doi VARCHAR(100) DEFAULT '',
+    journal_ref TEXT DEFAULT '',
+    score INT DEFAULT 0,
+    score_details TEXT[] DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_papers_updated_at ON papers(updated_at);
 CREATE INDEX IF NOT EXISTS idx_papers_categories ON papers USING GIN(categories);
+CREATE INDEX IF NOT EXISTS idx_papers_score ON papers(score DESC);
 
 CREATE TABLE IF NOT EXISTS sync_log (
     id SERIAL PRIMARY KEY,

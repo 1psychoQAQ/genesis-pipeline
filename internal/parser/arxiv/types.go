@@ -17,6 +17,11 @@ type atomEntry struct {
 	Authors    []atomAuthor   `xml:"author"`
 	Categories []atomCategory `xml:"category"`
 	Links      []atomLink     `xml:"link"`
+
+	// ArXiv-specific fields (arxiv: namespace)
+	Comment    string `xml:"comment"`
+	DOI        string `xml:"doi"`
+	JournalRef string `xml:"journal_ref"`
 }
 
 type atomAuthor struct {

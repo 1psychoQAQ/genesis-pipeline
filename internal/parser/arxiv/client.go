@@ -101,11 +101,38 @@ func (c *Client) convertEntries(entries []atomEntry) []model.Paper {
 			Authors:    extractAuthors(entry.Authors),
 			Categories: extractCategories(entry.Categories),
 			UpdatedAt:  entry.Updated,
+			Comments:   cleanText(entry.Comment),
+			DOI:        strings.TrimSpace(entry.DOI),
+			JournalRef: strings.TrimSpace(entry.JournalRef),
+			Links:      extractLinks(entry.Links),
 		}
 		papers = append(papers, paper)
 	}
 
 	return papers
+}
+
+func extractLinks(links []atomLink) []model.Link {
+	result := make([]model.Link, 0, len(links))
+	for _, l := range links {
+		if l.Href == "" {
+			continue
+		}
+		linkType := "other"
+		if strings.Contains(l.Type, "pdf") || strings.HasSuffix(l.Href, ".pdf") {
+			linkType = "pdf"
+		} else if l.Rel == "alternate" {
+			linkType = "abstract"
+		} else if strings.Contains(l.Href, "github.com") || strings.Contains(l.Href, "gitlab.com") {
+			linkType = "code"
+		}
+		result = append(result, model.Link{
+			URL:   l.Href,
+			Type:  linkType,
+			Title: l.Title,
+		})
+	}
+	return result
 }
 
 // extractID extracts the paper ID from the ArXiv URL.
