@@ -20,6 +20,17 @@ CREATE TABLE IF NOT EXISTS papers (
 
 CREATE INDEX IF NOT EXISTS idx_papers_updated_at ON papers(updated_at);
 CREATE INDEX IF NOT EXISTS idx_papers_categories ON papers USING GIN(categories);
+
+CREATE TABLE IF NOT EXISTS sync_log (
+    id SERIAL PRIMARY KEY,
+    query VARCHAR(255) NOT NULL,
+    papers_fetched INT NOT NULL DEFAULT 0,
+    papers_new INT NOT NULL DEFAULT 0,
+    papers_updated INT NOT NULL DEFAULT 0,
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(20) NOT NULL DEFAULT 'running'
+);
 `
 
 // Migrate runs database migrations.
