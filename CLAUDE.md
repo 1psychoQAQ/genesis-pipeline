@@ -28,6 +28,12 @@ docker-compose -f deployments/docker-compose.yml up -d
 
 # Stop PostgreSQL
 docker-compose -f deployments/docker-compose.yml down
+
+# Run benchmark
+go run cmd/benchmark/main.go -query "neural networks" -limit 50
+
+# Run Go benchmarks
+go test -bench=. ./...
 ```
 
 ## Architecture
@@ -35,12 +41,15 @@ docker-compose -f deployments/docker-compose.yml down
 Genesis Research Pipeline is a data pipeline for ArXiv scientific literature.
 
 ### Project Structure
-- `cmd/pipeline/` - Application entry point with CLI flags
-- `internal/model/` - Data models (Paper struct with ArXiv metadata)
+- `cmd/pipeline/` - Main application with CLI flags
+- `cmd/benchmark/` - Benchmark runner
+- `internal/model/` - Data models (Paper struct)
 - `internal/parser/` - Provider interface for data fetching
-- `internal/parser/arxiv/` - ArXiv API client implementation
+- `internal/parser/arxiv/` - ArXiv API client
 - `internal/storage/` - PostgreSQL storage layer
-- `deployments/` - Docker Compose configuration for PostgreSQL
+- `internal/validation/` - Data quality validation
+- `internal/benchmark/` - Benchmark utilities
+- `deployments/` - Docker Compose configuration
 
 ### Key Interfaces
 - `parser.Provider` - Interface for fetching papers: `FetchPapers(query string, limit int) ([]model.Paper, error)`
