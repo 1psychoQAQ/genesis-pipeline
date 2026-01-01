@@ -62,6 +62,9 @@ func (h *Handler) handlePapers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Print paper links to console
+	printPaperLinks(papers)
+
 	respondJSON(w, http.StatusOK, map[string]any{
 		"papers": papers,
 		"limit":  limit,
@@ -128,6 +131,9 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	// Print paper links to console
+	printPaperLinks(papers)
 
 	respondJSON(w, http.StatusOK, map[string]any{
 		"query":  query,
@@ -241,4 +247,22 @@ func ToPaperResponse(p model.Paper) PaperResponse {
 		Categories: p.Categories,
 		UpdatedAt:  p.UpdatedAt,
 	}
+}
+
+// printPaperLinks prints paper links to console
+func printPaperLinks(papers []model.Paper) {
+	if len(papers) == 0 {
+		return
+	}
+	log.Println("")
+	log.Println("════════════════════════════════════════════════════════════")
+	log.Printf("  📚 Found %d papers:", len(papers))
+	log.Println("════════════════════════════════════════════════════════════")
+	for i, p := range papers {
+		log.Printf("  [%d] %s", i+1, p.Title)
+		log.Printf("      📄 https://arxiv.org/abs/%s", p.ID)
+		log.Printf("      📥 https://arxiv.org/pdf/%s.pdf", p.ID)
+		log.Println("")
+	}
+	log.Println("════════════════════════════════════════════════════════════")
 }
