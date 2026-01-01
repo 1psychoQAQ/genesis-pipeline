@@ -20,7 +20,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Host:     "localhost",
-		Port:     5432,
+		Port:     5433,
 		User:     "genesis",
 		Password: "genesis_secret",
 		Database: "genesis_db",

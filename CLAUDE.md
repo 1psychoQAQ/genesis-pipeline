@@ -58,7 +58,7 @@ Genesis Research Pipeline is a data pipeline for ArXiv scientific literature.
 
 ### Database
 PostgreSQL via Docker Compose:
-- Host: `localhost:5432`
+- Host: `localhost:5433`
 - Database: `genesis_db`
 - User: `genesis`
 - Password: `genesis_secret`
