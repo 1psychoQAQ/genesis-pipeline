@@ -51,6 +51,10 @@ A data pipeline for collecting and storing scientific papers from ArXiv, built w
 git clone https://github.com/1psychoQAQ/genesis-pipeline.git
 cd genesis-pipeline
 
+# Setup configuration
+cp .env.example .env
+# Edit .env to add your GEMINI_API_KEY (optional, for AI search)
+
 # Start PostgreSQL
 docker-compose -f deployments/docker-compose.yml up -d
 
@@ -62,6 +66,29 @@ go run cmd/api/main.go -port 8088
 
 # Run benchmarks
 go run cmd/benchmark/main.go -limit 100
+```
+
+### Configuration
+
+All settings are configured via `.env` file or environment variables:
+
+```bash
+# Database
+DB_HOST=localhost
+DB_PORT=5433
+DB_USER=genesis
+DB_PASSWORD=genesis123
+DB_NAME=genesis
+
+# Gemini AI (for -question flag)
+GEMINI_API_KEY=your-api-key
+GEMINI_MODEL=gemini-2.0-flash
+
+# Pipeline Defaults
+DEFAULT_QUERY=machine learning
+DEFAULT_LIMIT=10
+DEFAULT_MIN_SCORE=60
+DEFAULT_MAX_AGE=365
 ```
 
 ### Pipeline Options
@@ -106,6 +133,7 @@ genesis-pipeline/
 │   ├── api/            # REST API server
 │   └── benchmark/      # Performance benchmarks
 ├── internal/
+│   ├── config/         # Configuration management
 │   ├── model/          # Data models
 │   ├── parser/         # ArXiv API client
 │   ├── llm/            # Gemini AI client
@@ -114,6 +142,7 @@ genesis-pipeline/
 │   ├── validation/     # Data quality checks
 │   ├── benchmark/      # Benchmark utilities
 │   └── api/            # HTTP handlers
+├── .env.example        # Configuration template
 └── deployments/        # Docker configurations
 ```
 
@@ -173,6 +202,10 @@ genesis-pipeline/
 git clone https://github.com/1psychoQAQ/genesis-pipeline.git
 cd genesis-pipeline
 
+# 配置环境
+cp .env.example .env
+# 编辑 .env，添加 GEMINI_API_KEY（可选，用于 AI 搜索）
+
 # 启动 PostgreSQL
 docker-compose -f deployments/docker-compose.yml up -d
 
@@ -184,6 +217,29 @@ go run cmd/api/main.go -port 8088
 
 # 运行性能测试
 go run cmd/benchmark/main.go -limit 100
+```
+
+### 配置说明
+
+所有配置通过 `.env` 文件或环境变量设置：
+
+```bash
+# 数据库
+DB_HOST=localhost
+DB_PORT=5433
+DB_USER=genesis
+DB_PASSWORD=genesis123
+DB_NAME=genesis
+
+# Gemini AI（用于 -question 参数）
+GEMINI_API_KEY=your-api-key
+GEMINI_MODEL=gemini-2.0-flash
+
+# 管道默认值
+DEFAULT_QUERY=machine learning
+DEFAULT_LIMIT=10
+DEFAULT_MIN_SCORE=60
+DEFAULT_MAX_AGE=365
 ```
 
 ### 管道参数
@@ -228,13 +284,16 @@ genesis-pipeline/
 │   ├── api/            # REST API 服务
 │   └── benchmark/      # 性能基准测试
 ├── internal/
+│   ├── config/         # 配置管理
 │   ├── model/          # 数据模型
 │   ├── parser/         # ArXiv API 客户端
+│   ├── llm/            # Gemini AI 客户端
 │   ├── filter/         # 质量过滤与打分
 │   ├── storage/        # PostgreSQL 存储层
 │   ├── validation/     # 数据质量验证
 │   ├── benchmark/      # 基准测试工具
 │   └── api/            # HTTP 处理器
+├── .env.example        # 配置模板
 └── deployments/        # Docker 配置
 ```
 
